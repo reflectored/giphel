@@ -906,7 +906,7 @@ int main(int argc, char* argv[])
 
         if(maxnode==-1)
         {
-            printf("Error by reading Graph.");
+            printf("Error reading Graph. \n");
             return 1;
         }
         maxnode++;
