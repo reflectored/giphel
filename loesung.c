@@ -557,7 +557,7 @@ int initiateGraph(FILE* fp)
     unsigned int ** values,*valuesArray,getvalue,getvalue1; // eingelesene Werte
     int* newhutlist;
     //int maxhut=GRAPHSIZE;
-	    int maxnode=firstmax; // die Grosse des Graphes und der Wert maximaler KnotenID
+	    //int maxnode=firstmax; // die Grosse des Graphes und der Wert maximaler KnotenID
     int isValid;// Wert von addNode funktion
     int newlength,isNodesdone=0;
     int linesread=0;
@@ -640,7 +640,7 @@ int initiateGraph(FILE* fp)
             if(getvalue1>getvalue)
                 getvalue=getvalue1;
             // speichere die maximale Knoten ID
-            if(getvalue>maxnode)
+            if(getvalue>MAXNODE)
                 MAXNODE=getvalue;
 
             //Wenn die Listen zu klein sind, vergroessere ich die Listen
@@ -689,7 +689,7 @@ int initiateGraph(FILE* fp)
 if(errorFlag)
 	goto ERROR;
 
-    return maxnode;
+    return 1;
 
 ERROR:
 	printf("line: %d \n",linesread);
