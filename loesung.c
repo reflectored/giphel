@@ -324,12 +324,12 @@ void printGraph(int maxnode)
 /**
  * Die Funktion befreit den Graph
  */
-void freeGraph(int maxnode )
+void freeGraph()
 {
     struct GraphBlock *nodepointer;
 
 
-    for (int i=0;i<maxnode;i++)
+    for (int i=0;i<MAXNODE;i++)
     {
         //zeige auf den Knoten am i
         nodepointer=GRAPHSTART[i];
@@ -912,7 +912,7 @@ int main(int argc, char* argv[])
         {
             printf("Error initiating Graph. \n");
 	    printf("maxnode=%d graphsize=%d \n",MAXNODE,GRAPHSIZE);
-	    freeGraph(GRAPHSIZE);
+	    freeGraph();
 	    free(GRAPHSTART);
 	    free(HUTLIST);
 	    fclose(readfile);
@@ -927,7 +927,7 @@ int main(int argc, char* argv[])
             printf("%d is Hut\n", i);
     }*/
         //printGraph(maxnode);
-        freeGraph(maxnode);
+        freeGraph();
         //befreie die Liste von Knoten
         free(GRAPHSTART);
         //befreie die Liste von Huetten
