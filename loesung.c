@@ -34,7 +34,7 @@ struct Queue{
 
 unsigned int STARTID,ENDID, DMAX;
 struct GraphBlock** GRAPHSTART;
-int GRAPHSIZE,*HUTLIST, HUTLENGTH;
+int GRAPHSIZE,MAXNODE,*HUTLIST, HUTLENGTH;
 
 void initQueue(struct Queue *queue)
 {
@@ -552,7 +552,7 @@ int enlargeLists(int maxnode)
  * @param fp pointer zu der Datei (ich gebe STDIN ueber); firstmax der grossere Knoten von Start- und End- Knoten
  * @return -1 FEHLER oder int max die Anzahl der Knoten
  */
-int initiateGraph(FILE* fp,int firstmax)
+int initiateGraph(FILE* fp)
 {
     unsigned int ** values,*valuesArray,getvalue,getvalue1; // eingelesene Werte
     int* newhutlist;
@@ -641,7 +641,7 @@ int initiateGraph(FILE* fp,int firstmax)
                 getvalue=getvalue1;
             // speichere die maximale Knoten ID
             if(getvalue>maxnode)
-                maxnode=getvalue;
+                MAXNODE=getvalue;
 
             //Wenn die Listen zu klein sind, vergroessere ich die Listen
             if(getvalue>=GRAPHSIZE) {
@@ -861,7 +861,8 @@ void getHuts(int size)
 int main(int argc, char* argv[])
 {
         unsigned int** values; // Die Zeile die wir lesen.
-        int maxnode; // Maximale Knoten ID
+        int initialsize; // Die upspruengliche Grosse 
+	int statusvalue; // Der zuruekgegebene Wert der Funktion
 
         //Lese die Datei
         FILE* readfile= stdin;
@@ -887,10 +888,11 @@ int main(int argc, char* argv[])
         free(values);
 
         //Max KnoteID am anfang is entweder Start- oder End- Knote
-        maxnode=STARTID>ENDID?STARTID:ENDID;
-
+        initialsize=STARTID>ENDID?STARTID:ENDID;
+	MAXNODE=initialsize;
         //Die erste Grosse der Graph ist zweimal den maximalen Knoten
-        GRAPHSIZE=(maxnode+1)*2;
+        GRAPHSIZE=(initialsize+1)*2;
+	
         //Die Huetten sind in ein BIT muster gespeichert, jeder Bit ist ein Index. so es ist GRAPHSIZE/32(normalerweise)bit + 1
         HUTLENGTH=GRAPHSIZE/(sizeof(int)*4)+1;
 
@@ -904,19 +906,20 @@ int main(int argc, char* argv[])
             return 1;
         }
         //Wir lesen die Datei und speichern den grossesten KnotenID
-        maxnode=initiateGraph(readfile,maxnode);
+        statusvalue=initiateGraph(readfile);
 
-        if(maxnode==-1)
+        if(statusvalue==-1)
         {
             printf("Error initiating Graph. \n");
-	    //freeGraph(maxnode);
-	    //free(GRAPHSTART);
-	    //free(HUTLIST);
+	    printf("maxnode=%d graphsize=%d \n",MAXNODE,GRAPHSIZE);
+	    freeGraph(GRAPHSIZE);
+	    free(GRAPHSTART);
+	    free(HUTLIST);
 	    fclose(readfile);
 
             return 1;
         }
-        maxnode++;
+        MAXNODE++;
         //getHuts(maxnode);
 
    /* for(int i=0;i<=maxnode;i++) {
