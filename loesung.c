@@ -136,7 +136,7 @@ void setCheck(int* array,int indicie)
 {
     if(array==NULL)
         return;
-    array[indicie/(sizeof(int)*8)]|=1<<(indicie%(sizeof(int)*8));
+    array[(int)(indicie/(sizeof(int)*8))]|=1<<(indicie%(sizeof(int)*8));
 }
 int isCheck(int* array,int indicie)
 {
@@ -601,18 +601,23 @@ int initiateGraph(FILE* fp)
             		free(values);
 			continue;
                     }
+		    
+		    printf("add %p \n",HUTLIST);
 		    free(HUTLIST);
                     HUTLIST=newhutlist;
-                    HUTLENGTH=newlength;
+                    
+		    printf("add %p \n",HUTLIST);
+		    HUTLENGTH=newlength;
 		 
                 }
                 isNodesdone=1;
             }
             getvalue=*values[0];
             //Wenn die Listen zu klein sind, vergroessere ich die HueteListe
-            if(getvalue>=HUTLENGTH) {
+            if(getvalue/(sizeof(int)*8)>=HUTLENGTH) {
 
-                newhutlist=realloc(HUTLIST,(size_t)HUTLENGTH*2);
+                printf("realloc %d ", HUTLENGTH);
+		    newhutlist=realloc(HUTLIST,(size_t)HUTLENGTH*2);
                 if(newhutlist==NULL)
                 {
                     printf("Failed to enlarge HUTLIST (addNode)\n");
@@ -621,12 +626,15 @@ int initiateGraph(FILE* fp)
             	    free(values);
 		    continue;
                 }
+		for(int i=0;i<HUTLENGTH;i++)
+			newhutlist[i]=0;
+		
                 HUTLIST=newhutlist;
                 HUTLENGTH*=2;
 
             }
             //Merke dass dies eine Huette ist
-            setCheck(HUTLIST,getvalue);
+	    setCheck(HUTLIST,getvalue);
 
             free(values[0]);
             free(values);
@@ -864,7 +872,7 @@ int main(int argc, char* argv[])
         unsigned int** values; // Die Zeile die wir lesen.
         int initialsize; // Die upspruengliche Grosse 
 	int statusvalue; // Der zuruekgegebene Wert der Funktion
-
+	HUTLIST=NULL;GRAPHSTART=NULL;
         //Lese die Datei
         FILE* readfile= stdin;
 
@@ -895,7 +903,7 @@ int main(int argc, char* argv[])
         GRAPHSIZE=(initialsize+1)*2;
 	
         //Die Huetten sind in ein BIT muster gespeichert, jeder Bit ist ein Index. so es ist GRAPHSIZE/32(normalerweise)bit + 1
-        HUTLENGTH=GRAPHSIZE/(sizeof(int)*4)+1;
+        HUTLENGTH=(GRAPHSIZE/(sizeof(int)*8))+1;
 
         //Wir reservieren so viel Platz wie oben fuer Huetteliste und Knotenliste
         HUTLIST=calloc((size_t)HUTLENGTH,sizeof(int));
@@ -926,7 +934,7 @@ int main(int argc, char* argv[])
         if (isCheck(HUTLIST, i) == 1)
             printf("%d is Hut\n", i);
     }*/
-        //printGraph(maxnode);
+        //printGraph(MAXNODE);
         printf("maxnode=%d graphsize=%d \n",MAXNODE,GRAPHSIZE);
 
 	freeGraph();
