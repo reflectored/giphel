@@ -329,7 +329,7 @@ void freeGraph()
     struct GraphBlock *nodepointer;
 
 
-    for (int i=0;i<=MAXNODE;i++)
+    for (int i=0;i<GRAPHSIZE;i++)
     {
         //zeige auf den Knoten am i
         nodepointer=GRAPHSTART[i];
@@ -508,19 +508,28 @@ int addNode(unsigned int* values){
  * Die Funktion vergrosst die globale Liste der Knoten
  * @return 1 - wenn erfolgreich; -1 - wenn es eine Fehler gibt
  */
-int enlargeLists(int maxnode)
+int enlargeLists()
 {
 
     int newGSize; //neue Grosse der Listen
-    struct GraphBlock **newGraph;//neue Knotenliste
+    int failed=0;
+    struct GraphBlock **newGraph=NULL;//neue Knotenliste
 
     if(GRAPHSTART==NULL || HUTLIST==NULL)
     {
         printf("The Graph or Hut list is not initiated (enlargeLists)\n");
     }
     //************vergroesse die Knoten Liste
-    newGSize=(maxnode+1)*2;
-    newGraph=realloc(GRAPHSTART,sizeof(struct GraphBlock*)*newGSize);
+    if(MAXNODE < 3162)
+    	newGSize=(MAXNODE+1)*(MAXNODE+1);
+    else
+	    if(MAXNODE*2<10000000)
+		    newGSize=MAXNODE*2;
+	    else
+		    failed=1;
+	
+    if(!failed)
+   	 newGraph=realloc(GRAPHSTART,sizeof(struct GraphBlock*)*newGSize);
 
     if(newGraph==NULL)
     {
@@ -654,7 +663,7 @@ int initiateGraph(FILE* fp)
 
             //Wenn die Listen zu klein sind, vergroessere ich die Listen
             if(getvalue>=GRAPHSIZE) {
-                if(enlargeLists(getvalue)==-1)
+                if(enlargeLists()==-1)
 		{
 		         printf("Error while enlarging Nodeslist. \n");
 			 errorFlag=1;
@@ -899,7 +908,9 @@ int main(int argc, char* argv[])
         //Max KnoteID am anfang is entweder Start- oder End- Knote
         initialsize=STARTID>ENDID?STARTID:ENDID;
 	MAXNODE=initialsize;
-        //Die erste Grosse der Graph ist zweimal den maximalen Knoten
+        initialsize=1000>initialsize?1000:initialsize;
+
+	//Die erste Grosse der Graph ist zweimal den maximalen Knoten
         GRAPHSIZE=(initialsize+1)*2;
 	
         //Die Huetten sind in ein BIT muster gespeichert, jeder Bit ist ein Index. so es ist GRAPHSIZE/32(normalerweise)bit + 1
