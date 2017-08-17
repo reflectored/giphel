@@ -16,122 +16,140 @@ struct GraphBlock {
 
 };
 
-struct NodeDay{
+typedef struct{
     int ID;
     unsigned int dayleft;
-};
+}NodeDay;
 
-struct NodeSuccess{
-    int ID;
-    unsigned int dayleft;
-    int* success;
-};
 
-struct Queue{
-    void* queue;
+typedef struct{
+    NodeDay* stack;
     int length;
-};
+    int current;
+}Stack;
 
+typedef struct{
+    NodeDay* stack;
+    int length;
+    int current;
+}PQ;
+
+PQ MAINPQ;
 unsigned int STARTID,ENDID, DMAX;
 struct GraphBlock** GRAPHSTART;
-int GRAPHSIZE,MAXNODE,*HUTLIST, HUTLENGTH;
+int GRAPHSIZE,MAXNODE,*HUTLIST, HUTLENGTH,*HITLIST,*HITLIST2,*DONELIST,*DONELIST2;
 
-void initQueue(struct Queue *queue)
+int initPQ(PQ *inqueue)
 {
-    queue->queue=NULL;
-    queue->length=0;
-}
-int isQueueEmpty(struct Queue *queue)
-{
-    if(queue->length==0)
+    NodeDay* newstack=malloc(sizeof(NodeDay)*(MAXNODE+1));
+    if(inqueue==NULL || newstack==NULL)
         return 1;
-    else
-        return 0;
+    inqueue->stack=newstack;
+    inqueue->length=MAXNODE+1;
+    inqueue->current=0;
+    return 0;
 }
-int enqueueSuc(struct Queue *queue,struct NodeSuccess node)
+void siftUP(PQ *inqueue, int index)
 {
-    struct NodeSuccess* newarray=malloc(sizeof(struct NodeSuccess)*(queue->length+1));
-    struct NodeSuccess* oldqueue=newarray+1;
-    if(newarray==NULL)
-        return -1;
-
-    newarray[0]=node;
-    if(queue->queue!=NULL)
-        memcpy(oldqueue,queue->queue,sizeof(struct NodeSuccess)*queue->length);
-    free(queue->queue);
-    queue->queue=newarray;
-    queue->length++;
-
-    return 1;
-}
-int enqueue(struct Queue *queue,struct NodeDay node)
-{
-    struct NodeDay* newarray=malloc(sizeof(struct NodeDay)*(queue->length+1));
-    struct NodeDay* oldqueue=newarray+1;
-    if(newarray==NULL)
-    return -1;
-
-    newarray[0]=node;
-    if(queue->queue!=NULL)
-        memcpy(oldqueue,queue->queue,sizeof(struct NodeDay)*queue->length);
-    free(queue->queue);
-    queue->queue=newarray;
-    queue->length++;
-
-    return 1;
-}
-struct NodeSuccess* dequeueSuc(struct Queue *queue)
-{
-    struct NodeSuccess *node=malloc(sizeof(struct NodeSuccess)), *allocpoint,*helpointer;
-    if(queue->length>0)
+    NodeDay swap;
+    int parentindx=(index-1)/2;
+    while(parentindx>=0 && inqueue->stack[index].dayleft < inqueue->stack[parentindx].dayleft)
     {
-        helpointer=(struct NodeSuccess*)queue->queue;
-        node->ID=helpointer->ID;
-        node->dayleft=helpointer->dayleft;
-        queue->length--;
-        if(queue->length==0)
-            queue->queue=NULL;
-        else {
-            allocpoint=malloc(sizeof(struct NodeSuccess)*queue->length);
-            memcpy(allocpoint,helpointer+1,sizeof(struct NodeSuccess)*queue->length);
-            if(allocpoint==NULL)
-                return NULL;
-            free(helpointer);
-            queue->queue=allocpoint;
-
-        }
-        return node;
+        swap=inqueue->stack[parentindx];
+        inqueue->stack[parentindx]=inqueue->stack[index];
+        inqueue->stack[index]=swap;
+        index=parentindx;
+        parentindx=(index-1)/2;
     }
-    else
-        return NULL;
 
 }
-struct NodeDay* dequeue(struct Queue *queue)
+int enqueue(PQ *inqueue, NodeDay node)
 {
-    struct NodeDay *node=malloc(sizeof(struct NodeDay)), *allocpoint,*helpointer;
-    if(queue->length>0)
+    NodeDay* newstack;
+    if(inqueue->current==inqueue->length)
     {
-        helpointer=(struct NodeDay*)queue->queue;
-        node->ID=helpointer->ID;
-        node->dayleft=helpointer->dayleft;
-        queue->length--;
-        if(queue->length==0)
-            queue->queue=NULL;
-        else {
-            allocpoint=malloc(sizeof(struct NodeDay)*queue->length);
-            memcpy(allocpoint,helpointer+1,sizeof(struct NodeDay)*queue->length);
-            if(allocpoint==NULL)
-                return NULL;
-            free(helpointer);
-            queue->queue=allocpoint;
-
-        }
-        return node;
+        newstack=realloc(inqueue->stack,(size_t)inqueue->length*2);
+        if(newstack==NULL)
+            return 1;
+        inqueue->length*=2;
+        inqueue->stack=newstack;
     }
-    else
-        return NULL;
+    inqueue->stack[inqueue->current]=node;
+    siftUP(inqueue,inqueue->current);
+    inqueue->current++;
+    return 0;
+}
+
+void siftDOWN(PQ *inqueue, int index)
+{
+    NodeDay swap;
+    int childindx=index*2+1;
+    while(childindx<inqueue->current)
+    {
+
+        if(childindx+1 < inqueue->current )
+           {
+               if(inqueue->stack[index].dayleft > inqueue->stack[childindx].dayleft &&
+                  inqueue->stack[index].dayleft > inqueue->stack[childindx+1].dayleft  )
+               {
+                   if(inqueue->stack[childindx].dayleft > inqueue->stack[childindx+1].dayleft)
+                   {
+                       swap=inqueue->stack[++childindx];
+                   }
+                   else
+                   {
+                       swap=inqueue->stack[childindx];
+                   }
+               }
+               else
+               {
+                   if(inqueue->stack[index].dayleft > inqueue->stack[childindx].dayleft)
+                       swap=inqueue->stack[childindx];
+                   else
+                       if(inqueue->stack[index].dayleft > inqueue->stack[childindx+1].dayleft)
+                           swap=inqueue->stack[++childindx];
+                       else
+                            return;
+               }
+
+
+            inqueue->stack[childindx]=inqueue->stack[index];
+            inqueue->stack[index]=swap;
+        }
+        else
+        {
+
+            if(inqueue->stack[index].dayleft <= inqueue->stack[childindx].dayleft)
+                return;
+            swap=inqueue->stack[childindx];
+            inqueue->stack[childindx]=inqueue->stack[index];
+            inqueue->stack[index]=swap;
+        }
+
+
+        index=childindx;
+        childindx=index*2+1;
+    }
 
 }
+
+NodeDay* dequeue(PQ *inqueue)
+{
+    NodeDay* ret= malloc(sizeof(NodeDay));
+    if(ret==NULL || inqueue->current==0)
+    {
+        return NULL;
+    }
+    ret->dayleft=inqueue->stack[0].dayleft;
+    ret->ID=inqueue->stack[0].ID;
+    inqueue->stack[0]=inqueue->stack[--inqueue->current];
+    siftDOWN(inqueue,0);
+
+    return ret;
+}
+
+
+
 void setCheck(int* array,int indicie)
 {
     if(array==NULL)
@@ -278,7 +296,6 @@ unsigned int** getValidLine(FILE* fp)
             }
         (*num)=(*num)*10+(c-'0');
         count++;
-
         c=(char)fgetc(fp);
     }
 
@@ -372,7 +389,7 @@ int enlargeEdgeList(struct GraphBlock* nodepointer)
         return -1;
     }
     //fulle die neuen Platz mit Nullen aus
-    memcpy(nodepointer->edgelist,newlist,(size_t)edgelength1);
+    memcpy(nodepointer->edgelist+edgelength1,newlist,(size_t)edgelength1);
     free(newlist);
     nodepointer->edgelength1=edgelength1*2;
 
@@ -393,7 +410,7 @@ int enlargeEdgeList(struct GraphBlock* nodepointer)
         return -1;
     }
     //fulle die neuen Platz mit Nullen aus
-    memcpy(nodepointer->fromedgelist,newlist,(size_t)edgelength2);
+    memcpy(nodepointer->fromedgelist+edgelength2,newlist,(size_t)edgelength2);
     free(newlist);
     nodepointer->edgelength2=edgelength2*2;
     return 1;
@@ -520,11 +537,11 @@ int enlargeLists()
         printf("The Graph or Hut list is not initiated (enlargeLists)\n");
     }
     //************vergroesse die Knoten Liste
-    if(MAXNODE < 3162)
-    	newGSize=(MAXNODE+1)*(MAXNODE+1);
-    else
+    //if(MAXNODE < 3162)
+    //	newGSize=(MAXNODE+1)*(MAXNODE+1);
+   // else
 	    if(MAXNODE*2<10000000)
-		    newGSize=MAXNODE*2;
+		    newGSize=MAXNODE*10;
 	    else
 		    failed=1;
 	
@@ -611,11 +628,8 @@ int initiateGraph(FILE* fp)
 			continue;
                     }
 		    
-		    printf("add %p \n",HUTLIST);
 		    free(HUTLIST);
                     HUTLIST=newhutlist;
-                    
-		    printf("add %p \n",HUTLIST);
 		    HUTLENGTH=newlength;
 		 
                 }
@@ -715,180 +729,165 @@ ERROR:
 
 }
 
-
-
-void getHuts(int size)
+void oneRecursiv()
 {
-    struct Queue nodequeue,hutqueue,finalqueue;
-    struct NodeDay *node=NULL,*newnode=NULL;
-    struct GraphBlock *startBlock;
-    unsigned int **costlist=calloc((size_t)size,sizeof(int*)),*newlist,**oldpointer,**newcostlist;
-    int* hutchecklist= calloc((size_t)HUTLENGTH,sizeof(int)),*hutchecklist2= calloc((size_t)HUTLENGTH,sizeof(int));
-
-    if(costlist==NULL||hutchecklist==NULL)
-    {
-        printf("Failed to allocate hutchecklist or costlist (getHuts)\n");
-        return;
-    }
-    node=malloc(sizeof(struct NodeDay));
-
-    node->ID=STARTID;
-    node->dayleft=DMAX;
-
-    initQueue(&finalqueue);
-    initQueue(&nodequeue);
-    initQueue(&hutqueue);
+    NodeDay* node=dequeue(&MAINPQ);
+    NodeDay newnode;
+    while(node!=NULL) {
 
 
-    enqueue(&nodequeue,*node);
+        if(isCheck(DONELIST,node->ID)==0)
+        {
+            setCheck(DONELIST, node->ID);
 
-    while(!isQueueEmpty(&nodequeue))
-    {
+            if (isCheck(HUTLIST, node->ID)) {
+                setCheck(HITLIST, node->ID);
+            }
 
+            if (GRAPHSTART[node->ID] != NULL ) {
+                for (int i = 0; i < GRAPHSTART[node->ID]->index1; i++) {
+
+                    if(isCheck(DONELIST,GRAPHSTART[node->ID]->edgelist[i].toID))
+			    continue;
+		    
+                    if(node->dayleft > (node->dayleft + GRAPHSTART[node->ID]->edgelist[i].cost))
+			    continue;
+
+                    if((node->dayleft + GRAPHSTART[node->ID]->edgelist[i].cost) > DMAX)
+                        continue;
+		    
+			
+                    newnode.ID = GRAPHSTART[node->ID]->edgelist[i].toID;
+                    newnode.dayleft = node->dayleft + GRAPHSTART[node->ID]->edgelist[i].cost;
+
+
+                    if(enqueue(&MAINPQ, newnode))
+                    {
+                        printf("Priority Queue is too big \n");
+                        return;
+		    }
+                }
+
+            }
+        }
         free(node);
-        node=dequeue(&nodequeue);
-
-        if(node!=NULL) {
-            if(isCheck(HUTLIST,node->ID))
-                setCheck(hutchecklist,node->ID);
-            if (costlist[node->ID] == NULL){
-                newlist=malloc(sizeof(int));
-                if(newlist==NULL)
-                {
-                    printf("Failed to allocate memory costlist 1(getHuts)\n");
-                    return;
-                }
-                costlist[node->ID]=newlist;
-                *costlist[node->ID] = node->dayleft;
-            }
-            if(*costlist[node->ID] <= node->dayleft) {
-                *costlist[node->ID] = node->dayleft;
-                startBlock = GRAPHSTART[node->ID];
-                if (startBlock != NULL) {
-                    for (int i = 0; i < startBlock->index1; i++) {
-                        if (node->dayleft >= startBlock->edgelist[i].cost ) {
-                            newnode = malloc(sizeof(struct NodeDay));
-                            if(newnode==NULL)
-                            {
-                                printf("Failed to allocate memory newnode (getHuts)\n");
-                                return;
-                            }
-                            newnode->ID = startBlock->edgelist[i].toID;
-                            newnode->dayleft = node->dayleft - startBlock->edgelist[i].cost;
-                            enqueue(&nodequeue, *newnode);
-                            free(newnode);
-                        }
-                    }
-
-                }
-
-            }
-        }
-
+        node=dequeue(&MAINPQ);
     }
+}
 
-        oldpointer=costlist;
-        newcostlist=calloc((size_t)size,sizeof(int*));
+void backRecursiv()
+{
+    NodeDay* node=dequeue(&MAINPQ);
+    NodeDay newnode;
+    unsigned int checkvalue;
+    while(node!=NULL) {
 
-        if(newcostlist==NULL)
+        if(isCheck(DONELIST2,node->ID)==0 )
         {
-            printf("Error to allocate memoryewcostlist (getHuts)\n ");
-            return ;
+            setCheck(DONELIST2, node->ID);
+
+            if (isCheck(HUTLIST, node->ID)) {
+                setCheck(HITLIST2, node->ID);
+            }
+
+            if (GRAPHSTART[node->ID] != NULL) {
+                for (int i = 0; i < GRAPHSTART[node->ID]->index2; i++) {
+
+                   if (isCheck(DONELIST2,GRAPHSTART[node->ID]->fromedgelist[i].toID))
+                        continue;
+
+                    checkvalue=node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost;
+
+                    if (node->dayleft > checkvalue)
+                       continue;
+
+                    if((node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost) > DMAX)
+                        continue;
+
+                    newnode.ID = GRAPHSTART[node->ID]->fromedgelist[i].toID;
+                    newnode.dayleft = node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost;
+
+                    if(enqueue(&MAINPQ, newnode))
+                    {
+                        printf("Priority Queue is too big \n");
+                        return;}
+                }
+
+            }
         }
-        costlist=newcostlist;
-        node=malloc(sizeof(struct NodeDay));
-        if (node == NULL) {
-        printf("Failed to allocate memory node 1(getHuts)\n");
-        return;}
-        node->ID=ENDID;
-        node->dayleft=DMAX;
-
-    enqueue(&nodequeue,*node);
-
-    while(!isQueueEmpty(&nodequeue)) {
-
         free(node);
-        node = dequeue(&nodequeue);
-
-        if (node != NULL) {
-            if (isCheck(HUTLIST, node->ID))
-                setCheck(hutchecklist2, node->ID);
-            if (costlist[node->ID] == NULL) {
-                newlist = malloc(sizeof(int));
-                if (newlist == NULL) {
-                    printf("Failed to allocate memory costlist 1(getHuts)\n");
-                    return;
-                }
-                costlist[node->ID] = newlist;
-                *costlist[node->ID] = node->dayleft;
-            }
-            if (*costlist[node->ID] <= node->dayleft) {
-                *costlist[node->ID] = node->dayleft;
-                startBlock = GRAPHSTART[node->ID];
-                if (startBlock != NULL) {
-                    for (int i = 0; i < startBlock->index2; i++) {
-                        if (node->dayleft >= startBlock->fromedgelist[i].cost) {
-                            newnode = malloc(sizeof(struct NodeDay));
-                            if (newnode == NULL) {
-                                printf("Failed to allocate memory newnode (getHuts)\n");
-                                return;
-                            }
-                            newnode->ID = startBlock->fromedgelist[i].toID;
-                            newnode->dayleft = node->dayleft - startBlock->fromedgelist[i].cost;
-                            enqueue(&nodequeue, *newnode);
-                            free(newnode);
-                        }
-                    }
-                }
-            }
-        }
+        node=dequeue(&MAINPQ);
     }
+}
 
-    for(int i=size-1;i>=0;i--)
+
+int DFSGraph()
+{
+    NodeDay start={STARTID,0};
+    NodeDay* point;
+    	
+    HITLIST=calloc((size_t)HUTLENGTH,sizeof(int));
+    HITLIST2=calloc((size_t)HUTLENGTH,sizeof(int));
+    DONELIST=calloc((size_t)HUTLENGTH,sizeof(int));
+    DONELIST2=calloc((size_t)HUTLENGTH,sizeof(int));
+
+    initPQ(&MAINPQ);
+    enqueue(&MAINPQ,start);
+    
+    oneRecursiv();
+    point=dequeue(&MAINPQ);
+     
+    while(point!=NULL)
     {
-        if(isCheck(hutchecklist,i)==isCheck(hutchecklist2,i)&& isCheck(hutchecklist2,i)==1)
-        {
-            newnode = malloc(sizeof(struct NodeDay));
-            if (newnode == NULL) {
-                printf("Failed to allocate memory newnode (getHuts)\n");
-                return;
-            }
-            newnode->ID=i;
-            newnode->dayleft=0;
-            enqueue(&finalqueue,*newnode);
-            free(newnode);
+	free(point);
+      	point=dequeue(&MAINPQ);
+    }
+    
+    start.dayleft=0;start.ID=ENDID;
+    enqueue(&MAINPQ,start);
+    backRecursiv();
+    
+    for(int i=0;i<=MAXNODE;i++)
+    { 
+	    if(isCheck(HITLIST,i) && isCheck(HITLIST2,i) )  {
+            	printf("%d\n",i);
         }
     }
-        while(!isQueueEmpty(&finalqueue))
-        {
-            node=dequeue(&finalqueue);
-            printf("%d\n",node->ID);
-            if(node!=NULL)
-                free(node);
-        }
-        for(int i=0;i<size;i++) {
-            free(costlist[i]);
-            free(oldpointer[i]);
-        }
-        free(costlist);
-        free(oldpointer);
-        costlist=NULL;
-        oldpointer=NULL;
+        
+    while(point!=NULL)
+    {
+	free(point);
+      	point=dequeue(&MAINPQ);
+    }
+    
+    free(HITLIST);
+    free(HITLIST2);
+    free(DONELIST);
+    free(DONELIST2);
+
+    return 0;
 }
 
 int main(int argc, char* argv[])
 {
         unsigned int** values; // Die Zeile die wir lesen.
         int initialsize; // Die upspruengliche Grosse 
-	int statusvalue; // Der zuruekgegebene Wert der Funktion
+        int statusvalue; // Der zuruekgegebene Wert der Funktion
+
 	HUTLIST=NULL;GRAPHSTART=NULL;
-        //Lese die Datei
+
+	//Lese die Datei
         FILE* readfile= stdin;
 
         //Lese die erste Zeile
-        values=getValidLine(readfile);
+       if(readfile==NULL)
+       {
+              printf("Invalid file \n");
+	       return 1;
+       }
+       	values=getValidLine(readfile);
 
-        if(values==NULL)
+        if(values[0]==NULL)
         {
             printf("Cannot read the first line in the file.\n");
             return 1;
@@ -898,8 +897,8 @@ int main(int argc, char* argv[])
         STARTID=*values[0];
         ENDID=*values[1];
         DMAX=*values[2];
-
-        //Freischalte den Lesbuffer
+        
+	//Freischalte den Lesbuffer
         free(values[0]);
         free(values[1]);
         free(values[2]);
@@ -938,16 +937,10 @@ int main(int argc, char* argv[])
 	    fclose(readfile);
 
             return 1;
-        }
-        //getHuts(maxnode);
-
-   /* for(int i=0;i<=maxnode;i++) {
-        if (isCheck(HUTLIST, i) == 1)
-            printf("%d is Hut\n", i);
-    }*/
-        //printGraph(MAXNODE);
-        printf("maxnode=%d graphsize=%d \n",MAXNODE,GRAPHSIZE);
-
+        
+	}
+        
+	DFSGraph();
 	freeGraph();
         //befreie die Liste von Knoten
         free(GRAPHSTART);
