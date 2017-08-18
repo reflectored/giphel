@@ -4,17 +4,18 @@
 
 
 
-struct EdgeBlock{
+typedef struct{
     int toID;
     unsigned int cost;
-};
-struct GraphBlock {
-    struct EdgeBlock* edgelist;
-    struct EdgeBlock* fromedgelist;
+}EdgeBlock;
+
+typedef struct {
+    EdgeBlock* edgelist;
+    EdgeBlock* fromedgelist;
     int edgelength1,edgelength2;
     int index1,index2;
 
-};
+}GraphBlock;
 
 typedef struct{
     int ID;
@@ -36,7 +37,7 @@ typedef struct{
 
 PQ MAINPQ;
 unsigned int STARTID,ENDID, DMAX;
-struct GraphBlock** GRAPHSTART;
+GraphBlock** GRAPHSTART;
 int GRAPHSIZE,MAXNODE,*HUTLIST, HUTLENGTH,*HITLIST,*HITLIST2,*DONELIST,*DONELIST2;
 
 int initPQ(PQ *inqueue)
@@ -138,6 +139,7 @@ NodeDay* dequeue(PQ *inqueue)
     NodeDay* ret= malloc(sizeof(NodeDay));
     if(ret==NULL || inqueue->current==0)
     {
+	free(ret);
         return NULL;
     }
     ret->dayleft=inqueue->stack[0].dayleft;
@@ -170,8 +172,6 @@ int isCheck(int* array,int indicie)
 //Output: Ein Array mit den Werten der Knoten, und Uberganggebuehr
 unsigned int** getValidLine(FILE* fp)
 {
-    
-
     char c,lastdigit=0; //Eingabe Char
     unsigned int count=0;
     unsigned int *num=malloc(sizeof(unsigned int)); //Indicie des Chars, und unsigned int den wir anehmen von der Datei
@@ -321,7 +321,7 @@ unsigned int** getValidLine(FILE* fp)
  */
 void printGraph(int maxnode)
 {
-    struct EdgeBlock *edgepointer;
+    EdgeBlock *edgepointer;
     for (int i=0;i<maxnode;i++)
     {
         //Wenn der Knote existiert
@@ -343,7 +343,7 @@ void printGraph(int maxnode)
  */
 void freeGraph()
 {
-    struct GraphBlock *nodepointer;
+    GraphBlock *nodepointer;
 
 
     for (int i=0;i<GRAPHSIZE;i++)
@@ -364,85 +364,91 @@ void freeGraph()
 }
 
 /**
- * Die Funktion vergroessert die Kanten liste von einem Knoten zwaifach
- * @param nodepointer pointer auf dem Knoten
- * @return 1 ERFOLG -1 MISSGLUECK
+ * Die Funktion vergroessert die Kantenliste von einem Knoten zwaifach
+ * @param nodepointer-pointer auf dem Knoten. index- hin oder her kommende Kantenliste
+ * @return 0 ERFOLG 1 MISSGLUECK
  */
 //TODO: finish the function to enlarge the list of edges.
-int enlargeEdgeList(struct GraphBlock* nodepointer)
+int enlargeEdgeList(GraphBlock* nodepointer,int index)
 {
-    struct EdgeBlock *newlist;
+    EdgeBlock *newlist;
     int edgelength1=nodepointer->edgelength1,edgelength2=nodepointer->edgelength2;
+    
+    if(index==0)
+    {
     //vergrossere die Liste
-    newlist=realloc(nodepointer->edgelist,sizeof(struct EdgeBlock)*edgelength1*2);
+    newlist=realloc(nodepointer->edgelist,sizeof(EdgeBlock)*edgelength1*2);
     if(newlist==NULL)
     {
         printf("Failed to allocate new Edgelist (enlargeEdgelist)\n");
-        return -1;
+        return 1;
     }
     nodepointer->edgelist=newlist;
     //erzeuge Nullen
-    newlist=calloc((size_t)edgelength1,sizeof(struct EdgeBlock));
+    newlist=calloc((size_t)edgelength1,sizeof(EdgeBlock));
     if(newlist==NULL)
     {
         printf("Failed to allocate new Edgelist (enlargeEdgelist)\n");
-        return -1;
+        return 1;
     }
     //fulle die neuen Platz mit Nullen aus
     memcpy(nodepointer->edgelist+edgelength1,newlist,(size_t)edgelength1);
     free(newlist);
     nodepointer->edgelength1=edgelength1*2;
-
+    }
+    else
+    {
     //Dieselbe fuer die zweite Kanten Liste
 
-    newlist=realloc(nodepointer->fromedgelist,sizeof(struct EdgeBlock)*edgelength2*2);
+    newlist=realloc(nodepointer->fromedgelist,sizeof(EdgeBlock)*edgelength2*2);
     if(newlist==NULL)
     {
         printf("Failed to allocate new Edgelist (enlargeEdgelist)\n");
-        return -1;
+        return 1;
     }
     nodepointer->fromedgelist=newlist;
     //erzeuge Nullen
-    newlist=calloc((size_t)edgelength2,sizeof(struct EdgeBlock));
+    newlist=calloc((size_t)edgelength2,sizeof(EdgeBlock));
     if(newlist==NULL)
     {
         printf("Failed to allocate new Edgelist (enlargeEdgelist)\n");
-        return -1;
+        return 1;
     }
     //fulle die neuen Platz mit Nullen aus
     memcpy(nodepointer->fromedgelist+edgelength2,newlist,(size_t)edgelength2);
     free(newlist);
     nodepointer->edgelength2=edgelength2*2;
-    return 1;
+    }
+    return 0;
 }
 /**
  * Die Funktion addiert einen Knoten und Kanten zu dem Graph per Zeile
  * @param values Die gegeben gelesene Zeile von Datei
- * @return -1 FEHLER; 1 ERFOLG
+ * @return 0 ERFOLG 1 MISSGLUECK
  */
 
 int addNode(unsigned int* values){
-    struct GraphBlock *newNode;
-    struct EdgeBlock *newEdge, *secEdge;
+    GraphBlock *newNode;
+    EdgeBlock *newEdge, *secEdge;
 
     if(values==NULL)
     {
         printf("Invalid read from File (addNode)\n");
-        return -1;
+        return 1;
     }
     //Wenn der Knoten nicht im Graph existiert, erzeuge ich den Knoten.
     if(GRAPHSTART[values[0]]==NULL)
     {
         //erzeuge neuen Knoten
-        newNode=malloc(sizeof(struct GraphBlock));
+        newNode=malloc(sizeof(GraphBlock));
         //erzeuge eine Liste fuer 5 Kanten
-        newEdge=calloc((size_t)5,sizeof(struct EdgeBlock));
-        secEdge=calloc((size_t)5,sizeof(struct EdgeBlock));
+        newEdge=calloc((size_t)5,sizeof(EdgeBlock));
+        secEdge=calloc((size_t)5,sizeof(EdgeBlock));
 
         if(newNode==NULL || newEdge==NULL || secEdge==NULL)
         {
             printf("Failed to allocate memory (addNode)\n");
-            return -1;
+            return 1;
         }
         //erzeuge die neue Kante an der ersten Stelle der Kanten Liste
         newEdge[0].toID=values[1];
@@ -465,8 +471,8 @@ int addNode(unsigned int* values){
         //pruefe ob die Kanten Liste voll ist
         if(newNode->index1>=newNode->edgelength1)
         {
-            if(enlargeEdgeList(newNode)==-1)
-                return -1;
+            if(enlargeEdgeList(newNode,0)==1)
+                return 1;
         }
 
         newNode->edgelist[newNode->index1].toID=values[1];
@@ -477,15 +483,15 @@ int addNode(unsigned int* values){
     if(GRAPHSTART[values[1]]==NULL)
     {
         //erzeuge neuen Knoten
-        newNode=malloc(sizeof(struct GraphBlock));
+        newNode=malloc(sizeof(GraphBlock));
         //erzeuge eine Liste fuer 5 Kanten
-        newEdge=calloc((size_t)5,sizeof(struct EdgeBlock));
-        secEdge=calloc((size_t)5,sizeof(struct EdgeBlock));
+        newEdge=calloc((size_t)5,sizeof(EdgeBlock));
+        secEdge=calloc((size_t)5,sizeof(EdgeBlock));
 
         if(newNode==NULL || newEdge==NULL || secEdge==NULL)
         {
             printf("Failed to allocate memory (addNode)\n");
-            return -1;
+            return 1;
         }
         //erzeuge die neue Kante an der ersten Stelle der Kanten Liste
         newEdge[0].toID=values[0];
@@ -508,8 +514,8 @@ int addNode(unsigned int* values){
         //pruefe ob die Kanten Liste voll ist
         if(newNode->index2>=newNode->edgelength2)
         {
-            if(enlargeEdgeList(newNode)==-1)
-                return -1;
+            if(enlargeEdgeList(newNode,1)==1)
+                return 1;
         }
 
         newNode->fromedgelist[newNode->index2].toID=values[0];
@@ -518,72 +524,69 @@ int addNode(unsigned int* values){
     }
 
 
-    return 1;
+    return 0;
 }
 
 /**
  * Die Funktion vergrosst die globale Liste der Knoten
- * @return 1 - wenn erfolgreich; -1 - wenn es eine Fehler gibt
+ * @return 0 ERFOLG 1 MISSGLUECK
  */
 int enlargeLists()
 {
 
     int newGSize; //neue Grosse der Listen
     int failed=0;
-    struct GraphBlock **newGraph=NULL;//neue Knotenliste
+    GraphBlock **newGraph=NULL;//neue Knotenliste
 
     if(GRAPHSTART==NULL || HUTLIST==NULL)
     {
         printf("The Graph or Hut list is not initiated (enlargeLists)\n");
+    	return 1;
     }
     //************vergroesse die Knoten Liste
-    //if(MAXNODE < 3162)
-    //	newGSize=(MAXNODE+1)*(MAXNODE+1);
-   // else
+    
 	    if(MAXNODE*2<10000000)
 		    newGSize=MAXNODE*10;
 	    else
 		    failed=1;
 	
     if(!failed)
-   	 newGraph=realloc(GRAPHSTART,sizeof(struct GraphBlock*)*newGSize);
+   	 newGraph=realloc(GRAPHSTART,sizeof(GraphBlock*)*newGSize);
 
     if(newGraph==NULL)
     {
         printf("FAILED to allocate memmory (enlargeLists)\n");
-        return -1;
+        return 1;
     }
 
     GRAPHSTART=newGraph;
-    newGraph=calloc((size_t)newGSize-GRAPHSIZE,sizeof(struct GraphBlock*));
+    newGraph=calloc((size_t)newGSize-GRAPHSIZE,sizeof(GraphBlock*));
 
     if(newGraph==NULL)
     {
         printf("FAILED to allocate memmory (enlargeLists)\n");
-        return -1;
+        return 1;
     }
     //fulle den neuen Platz mit Nullen
-    memcpy(GRAPHSTART+GRAPHSIZE,newGraph,sizeof(struct GraphBlock*)*(newGSize-GRAPHSIZE));
+    memcpy(GRAPHSTART+GRAPHSIZE,newGraph,sizeof(GraphBlock*)*(newGSize-GRAPHSIZE));
     GRAPHSIZE=newGSize;
     free(newGraph);
 
 
 
-    return 1;
+    return 0;
 
 }
 
 /**
  * Die Funktion liest und prueft die Datei, und baut die Knoten Liste und Hutte Liste
  * @param fp pointer zu der Datei (ich gebe STDIN ueber); firstmax der grossere Knoten von Start- und End- Knoten
- * @return -1 FEHLER oder int max die Anzahl der Knoten
+ * @return 0 ERFOLD 1 MISSGLUECK
  */
 int initiateGraph(FILE* fp)
 {
     unsigned int ** values,*valuesArray,getvalue,getvalue1; // eingelesene Werte
     int* newhutlist;
-    //int maxhut=GRAPHSIZE;
-	    //int maxnode=firstmax; // die Grosse des Graphes und der Wert maximaler KnotenID
     int isValid;// Wert von addNode funktion
     int newlength,isNodesdone=0;
     int linesread=0;
@@ -721,11 +724,11 @@ int initiateGraph(FILE* fp)
 if(errorFlag)
 	goto ERROR;
 
-    return 1;
+    return 0;
 
 ERROR:
 	printf("line: %d \n",linesread);
-        return -1;
+        return 1;
 
 }
 
@@ -764,7 +767,8 @@ void oneRecursiv()
                     if(enqueue(&MAINPQ, newnode))
                     {
                         printf("Priority Queue is too big \n");
-                        return;
+                        free(node);
+			return;
 		    }
                 }
 
@@ -810,7 +814,9 @@ void backRecursiv()
                     if(enqueue(&MAINPQ, newnode))
                     {
                         printf("Priority Queue is too big \n");
-                        return;}
+                        free(node);
+			return;
+		    }
                 }
 
             }
@@ -836,7 +842,7 @@ int DFSGraph()
     
     oneRecursiv();
     point=dequeue(&MAINPQ);
-     
+       
     while(point!=NULL)
     {
 	free(point);
@@ -853,13 +859,15 @@ int DFSGraph()
             	printf("%d\n",i);
         }
     }
-        
+    
+    point=dequeue(&MAINPQ);
     while(point!=NULL)
     {
 	free(point);
       	point=dequeue(&MAINPQ);
     }
     
+    free(MAINPQ.stack);
     free(HITLIST);
     free(HITLIST2);
     free(DONELIST);
@@ -917,7 +925,7 @@ int main(int argc, char* argv[])
 
         //Wir reservieren so viel Platz wie oben fuer Huetteliste und Knotenliste
         HUTLIST=calloc((size_t)HUTLENGTH,sizeof(int));
-        GRAPHSTART=calloc((size_t)GRAPHSIZE,sizeof(struct GraphBlock*));
+        GRAPHSTART=calloc((size_t)GRAPHSIZE,sizeof(GraphBlock*));
 
         if(HUTLIST==NULL || GRAPHSTART==NULL)
         {
@@ -927,7 +935,7 @@ int main(int argc, char* argv[])
         //Wir lesen die Datei und speichern den grossesten KnotenID
         statusvalue=initiateGraph(readfile);
 
-        if(statusvalue==-1)
+        if(statusvalue==1)
         {
             printf("Error initiating Graph. \n");
 	    printf("maxnode=%d graphsize=%d \n",MAXNODE,GRAPHSIZE);
