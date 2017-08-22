@@ -24,63 +24,66 @@ typedef struct{
 
 
 typedef struct{
-    NodeDay* stack;
-    int length;
-    int current;
-}Stack;
-
-typedef struct{
-    NodeDay* stack;
+    NodeDay* queue;
     int length;
     int current;
 }PQ;
 
-PQ MAINPQ;
-unsigned int STARTID,ENDID, DMAX;
-GraphBlock** GRAPHSTART;
-int GRAPHSIZE,MAXNODE,*HUTLIST, HUTLENGTH,*HITLIST,*HITLIST2,*DONELIST,*DONELIST2;
+//Die Globalevariabeln
 
+PQ MAINPQ; //Prioritaetschalnge
+unsigned int STARTID,ENDID, DMAX; //Start- und End- Knoten und DMAX
+GraphBlock** GRAPHSTART; //Zeiger auf die Hauptdatenstruktur fuer den Graph
+int GRAPHSIZE,MAXNODE; //Die Groesse des Graphens und die maximale KnotenID
+int *HUTLIST, HUTLENGTH; // Bitliste der markierten Huetten, und die Groesse deren
+int *HITLIST,*HITLIST2,*DONELIST,*DONELIST2; // Treffliste der Huetten und Knoten
+
+//Ordnen Speicherplatz fuer die Prioritaetschlange zu
 int initPQ(PQ *inqueue)
 {
     NodeDay* newstack=malloc(sizeof(NodeDay)*(MAXNODE+1));
     if(inqueue==NULL || newstack==NULL)
         return 1;
-    inqueue->stack=newstack;
+    inqueue->queue=newstack;
     inqueue->length=MAXNODE+1;
     inqueue->current=0;
     return 0;
 }
+
+//Aktualiesern den Heap, wenn wir einen neuen Knoten hinzufuegen
 void siftUP(PQ *inqueue, int index)
 {
     NodeDay swap;
     int parentindx=(index-1)/2;
-    while(parentindx>=0 && inqueue->stack[index].dayleft < inqueue->stack[parentindx].dayleft)
+    while(parentindx>=0 && inqueue->queue[index].dayleft < inqueue->queue[parentindx].dayleft)
     {
-        swap=inqueue->stack[parentindx];
-        inqueue->stack[parentindx]=inqueue->stack[index];
-        inqueue->stack[index]=swap;
+        swap=inqueue->queue[parentindx];
+        inqueue->queue[parentindx]=inqueue->queue[index];
+        inqueue->queue[index]=swap;
         index=parentindx;
         parentindx=(index-1)/2;
     }
 
 }
+//Fuegen einen neuen Knoten zu dem Heap, und aktualieseren den
 int enqueue(PQ *inqueue, NodeDay node)
 {
     NodeDay* newstack;
     if(inqueue->current==inqueue->length)
     {
-        newstack=realloc(inqueue->stack,(size_t)inqueue->length*2);
+        newstack=realloc(inqueue->queue,(size_t)inqueue->length*2);
         if(newstack==NULL)
             return 1;
         inqueue->length*=2;
-        inqueue->stack=newstack;
+        inqueue->queue=newstack;
     }
-    inqueue->stack[inqueue->current]=node;
+    inqueue->queue[inqueue->current]=node;
     siftUP(inqueue,inqueue->current);
     inqueue->current++;
     return 0;
 }
 
+//Aktualiesern den Heap, wenn wir einen neuen Knoten loeschen
 void siftDOWN(PQ *inqueue, int index)
 {
     NodeDay swap;
@@ -90,41 +93,41 @@ void siftDOWN(PQ *inqueue, int index)
 
         if(childindx+1 < inqueue->current )
            {
-               if(inqueue->stack[index].dayleft > inqueue->stack[childindx].dayleft &&
-                  inqueue->stack[index].dayleft > inqueue->stack[childindx+1].dayleft  )
+               if(inqueue->queue[index].dayleft > inqueue->queue[childindx].dayleft &&
+                  inqueue->queue[index].dayleft > inqueue->queue[childindx+1].dayleft  )
                {
-                   if(inqueue->stack[childindx].dayleft > inqueue->stack[childindx+1].dayleft)
+                   if(inqueue->queue[childindx].dayleft > inqueue->queue[childindx+1].dayleft)
                    {
-                       swap=inqueue->stack[++childindx];
+                       swap=inqueue->queue[++childindx];
                    }
                    else
                    {
-                       swap=inqueue->stack[childindx];
+                       swap=inqueue->queue[childindx];
                    }
                }
                else
                {
-                   if(inqueue->stack[index].dayleft > inqueue->stack[childindx].dayleft)
-                       swap=inqueue->stack[childindx];
+                   if(inqueue->queue[index].dayleft > inqueue->queue[childindx].dayleft)
+                       swap=inqueue->queue[childindx];
                    else
-                       if(inqueue->stack[index].dayleft > inqueue->stack[childindx+1].dayleft)
-                           swap=inqueue->stack[++childindx];
+                       if(inqueue->queue[index].dayleft > inqueue->queue[childindx+1].dayleft)
+                           swap=inqueue->queue[++childindx];
                        else
                             return;
                }
 
 
-            inqueue->stack[childindx]=inqueue->stack[index];
-            inqueue->stack[index]=swap;
+            inqueue->queue[childindx]=inqueue->queue[index];
+            inqueue->queue[index]=swap;
         }
         else
         {
 
-            if(inqueue->stack[index].dayleft <= inqueue->stack[childindx].dayleft)
+            if(inqueue->queue[index].dayleft <= inqueue->queue[childindx].dayleft)
                 return;
-            swap=inqueue->stack[childindx];
-            inqueue->stack[childindx]=inqueue->stack[index];
-            inqueue->stack[index]=swap;
+            swap=inqueue->queue[childindx];
+            inqueue->queue[childindx]=inqueue->queue[index];
+            inqueue->queue[index]=swap;
         }
 
 
@@ -133,7 +136,7 @@ void siftDOWN(PQ *inqueue, int index)
     }
 
 }
-
+//Speicheren den gewuenschten Knoten, loeschen aus dem Heap und aktualieseren den Heap. Danach geben wir den gespeicherten Knoten zurueck
 NodeDay* dequeue(PQ *inqueue)
 {
     NodeDay* ret= malloc(sizeof(NodeDay));
@@ -142,22 +145,23 @@ NodeDay* dequeue(PQ *inqueue)
 	free(ret);
         return NULL;
     }
-    ret->dayleft=inqueue->stack[0].dayleft;
-    ret->ID=inqueue->stack[0].ID;
-    inqueue->stack[0]=inqueue->stack[--inqueue->current];
+    ret->dayleft=inqueue->queue[0].dayleft;
+    ret->ID=inqueue->queue[0].ID;
+    inqueue->queue[0]=inqueue->queue[--inqueue->current];
     siftDOWN(inqueue,0);
 
     return ret;
 }
 
 
-
+//Markieren einen Bit an der Position indicie in dem Array
 void setCheck(int* array,int indicie)
 {
     if(array==NULL)
         return;
     array[(int)(indicie/(sizeof(int)*8))]|=1<<(indicie%(sizeof(int)*8));
 }
+//Pruefen ob ein Bit an der Position indicie in dem Array markiert ist
 int isCheck(int* array,int indicie)
 {
     if(array==NULL)
@@ -600,18 +604,20 @@ int initiateGraph(FILE* fp)
     //liest eine Zeile von der Datei
     values = getValidLine(fp);
     if(values!=NULL && values[0]==NULL)
-	    errorFlag=1;
+    {	    errorFlag=1;
+	    free(values);
+    }
     else
-    	    linesread++;
+    	linesread++;
 
     while(values!=NULL && errorFlag!=1)
     {    
-	if(values[0]==NULL)
-	{
-		errorFlag=1;
-		free(values);
-		continue;
-	}	
+		if(values[0]==NULL)
+		{
+			errorFlag=1;
+			free(values);
+			continue;
+		}	
 	   
         //wenn Es eine Zeile mit Huette Nummer
         if(values[1]==NULL)
@@ -625,15 +631,15 @@ int initiateGraph(FILE* fp)
                     if(newhutlist==NULL)
                     {
                         printf("Failed to enlarge HUTLIST (addNode)\n");
-			errorFlag=1;
-			free(values[0]);
-            		free(values);
-			continue;
+						errorFlag=1;
+						free(values[0]);
+						free(values);
+						continue;
                     }
 		    
-		    free(HUTLIST);
+					free(HUTLIST);
                     HUTLIST=newhutlist;
-		    HUTLENGTH=newlength;
+					HUTLENGTH=newlength;
 		 
                 }
                 isNodesdone=1;
@@ -643,29 +649,30 @@ int initiateGraph(FILE* fp)
             if(getvalue/(sizeof(int)*8)>=HUTLENGTH) {
 
                 printf("realloc %d ", HUTLENGTH);
-		    newhutlist=realloc(HUTLIST,(size_t)HUTLENGTH*2);
+				newhutlist=realloc(HUTLIST,(size_t)HUTLENGTH*2);
                 if(newhutlist==NULL)
                 {
                     printf("Failed to enlarge HUTLIST (addNode)\n");
                     errorFlag=1;
-		    free(values[0]);
+					free(values[0]);
             	    free(values);
-		    continue;
+					continue;
                 }
-		for(int i=0;i<HUTLENGTH;i++)
-			newhutlist[i]=0;
+				
+				for(int i=0;i<HUTLENGTH;i++)
+					newhutlist[i]=0;
 		
                 HUTLIST=newhutlist;
                 HUTLENGTH*=2;
 
             }
             //Merke dass dies eine Huette ist
-	    setCheck(HUTLIST,getvalue);
+			setCheck(HUTLIST,getvalue);
 
             free(values[0]);
             free(values);
 
-        }
+		}
         else
         {
             //Pruefe ob ich mehr Platz fuer die neue Knoten brauche
@@ -681,15 +688,15 @@ int initiateGraph(FILE* fp)
             //Wenn die Listen zu klein sind, vergroessere ich die Listen
             if(getvalue>=GRAPHSIZE) {
                 if(enlargeLists()==-1)
-		{
-		         printf("Error while enlarging Nodeslist. \n");
-			 errorFlag=1;
-			 free(values[0]);
-                         free(values[1]);
-                         free(values[2]);
-                         free(values);
-			 continue;
-		}
+				{
+				 printf("Error while enlarging Nodeslist. \n");
+				 errorFlag=1;
+				 free(values[0]);
+				 free(values[1]);
+				 free(values[2]);
+				 free(values);
+				continue;
+				}
                 //maxnode = GRAPHSIZE;
             }
 
@@ -711,163 +718,206 @@ int initiateGraph(FILE* fp)
             free(valuesArray);
 
             if(isValid==-1)
-	    {
-		printf("Error while adding a new Node. \n");
-	    	errorFlag=1;
-		continue;
-	    }
+			{
+				printf("Error while adding a new Node. \n");
+				errorFlag=1;
+				continue;
+			}
         }
         values = getValidLine(fp);
-	linesread++;
+		linesread++;
     }
 
-if(errorFlag)
+	if(errorFlag)
 	goto ERROR;
-
     return 0;
 
 ERROR:
 	printf("line: %d \n",linesread);
-        return 1;
+    return 1;
 
 }
-
+/**
+ * Die Funktion fuehrt DFS suche mit eine Prioritaetschlange. Wir suechen nach erreichbare Huette aus dem Startknoten.
+ * Alle gefuendene Knoten sind in HITLIST markiert
+ */
 void oneRecursiv()
 {
+	//entnehme den Erstenknoten in der Schlange
     NodeDay* node=dequeue(&MAINPQ);
     NodeDay newnode;
+    unsigned int checkvalue;
+	
     while(node!=NULL) {
 
-
+		
+		//Falls wir diesen Knoten noch nicht getroffen haben
         if(isCheck(DONELIST,node->ID)==0)
         {
+			
+			//Merken den als getroffen
             setCheck(DONELIST, node->ID);
 
+			
+			//Merken wenn wir eine Huette begegnet haben
             if (isCheck(HUTLIST, node->ID)) {
                 setCheck(HITLIST, node->ID);
             }
 
+			
+			//Falls dieser Knote Kanten hat
             if (GRAPHSTART[node->ID] != NULL ) {
+				
+				//Wir gehen durch die ausgehende Kanten des Knotens
                 for (int i = 0; i < GRAPHSTART[node->ID]->index1; i++) {
 
+					
+					//Falls diese Kante fuehrt zu eine besuchte Knote, suchen wir nach der naechsten Kante
                     if(isCheck(DONELIST,GRAPHSTART[node->ID]->edgelist[i].toID))
-			    continue;
-		    
-                    if(node->dayleft > (node->dayleft + GRAPHSTART[node->ID]->edgelist[i].cost))
-			    continue;
-
+						continue;
+					
+					checkvalue=node->dayleft + GRAPHSTART[node->ID]->edgelist[i].cost;
+						
+					//Falls es einen Ueberlauf bei der Addition gibt, suchen wir nach der naechsten Kante
+                    if(node->dayleft > checkvalue)
+						continue;
+					
+					//Falls die Kante mehr als DMAX kostet, suchen wir nach der naechsten Kante
                     if((node->dayleft + GRAPHSTART[node->ID]->edgelist[i].cost) > DMAX)
                         continue;
 		    
-			
+					
+					//Erzeugen den neuen Knoten mit der aktualisierten Zeit
                     newnode.ID = GRAPHSTART[node->ID]->edgelist[i].toID;
                     newnode.dayleft = node->dayleft + GRAPHSTART[node->ID]->edgelist[i].cost;
 
-
+					//Fuegen zu der Schlange, und pruefen es keine Fehlern gab
                     if(enqueue(&MAINPQ, newnode))
                     {
                         printf("Priority Queue is too big \n");
                         free(node);
-			return;
-		    }
+						return;
+					}
                 }
 
             }
         }
+		
+		//Schalten den besuchten Knoten frei, und nehmen den Naechsten
         free(node);
         node=dequeue(&MAINPQ);
     }
 }
 
+/**
+ * Die Funktion fuehrt DFS suche mit eine Prioritaetschlange. Wir suechen nach erreichbare Huette aus dem EndKnoten.
+ * Alle gefuendene Knoten sind in HITLIST2 markiert
+ */
 void backRecursiv()
 {
+	//entnehme den Erstenknoten in der Schlange
     NodeDay* node=dequeue(&MAINPQ);
     NodeDay newnode;
     unsigned int checkvalue;
+	
+	
     while(node!=NULL) {
 
+		//Falls wir diesen Knoten noch nicht getroffen haben
         if(isCheck(DONELIST2,node->ID)==0 )
         {
+			//Merken den als getroffen
             setCheck(DONELIST2, node->ID);
 
+			//Merken wenn wir eine Huette begegnet haben
             if (isCheck(HUTLIST, node->ID)) {
                 setCheck(HITLIST2, node->ID);
             }
 
+			//Falls dieser Knote Kanten hat
             if (GRAPHSTART[node->ID] != NULL) {
-                for (int i = 0; i < GRAPHSTART[node->ID]->index2; i++) {
+                
+				//Wir gehen durch die eingehende Kanten des Knotens
+				for (int i = 0; i < GRAPHSTART[node->ID]->index2; i++) {
 
-                   if (isCheck(DONELIST2,GRAPHSTART[node->ID]->fromedgelist[i].toID))
-                        continue;
+					//Falls diese Kante fuehrt zu eine besuchte Knote, suchen wir nach der naechsten Kante
+					if (isCheck(DONELIST2,GRAPHSTART[node->ID]->fromedgelist[i].toID))
+						continue;
 
-                    checkvalue=node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost;
+					checkvalue=node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost;
+						
+					//Falls es einen Ueberlauf bei der Addition gibt, suchen wir nach der naechsten Kante
+					if (node->dayleft > checkvalue)
+						continue;
 
-                    if (node->dayleft > checkvalue)
-                       continue;
+					//Falls die Kante mehr als DMAX kostet, suchen wir nach der naechsten Kante
+					if((node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost) > DMAX)
+						 continue;
 
-                    if((node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost) > DMAX)
-                        continue;
+					//Erzeugen den neuen Knoten mit der aktualisierten Zeit
+					newnode.ID = GRAPHSTART[node->ID]->fromedgelist[i].toID;
+					newnode.dayleft = node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost;
 
-                    newnode.ID = GRAPHSTART[node->ID]->fromedgelist[i].toID;
-                    newnode.dayleft = node->dayleft + GRAPHSTART[node->ID]->fromedgelist[i].cost;
+					//Fuegen zu der Schlange, und pruefen es keine Fehlern gab
+					if(enqueue(&MAINPQ, newnode))
+					{
+						printf("Priority Queue is too big \n");
+						free(node);
+						return;
+					}
+				}
 
-                    if(enqueue(&MAINPQ, newnode))
-                    {
-                        printf("Priority Queue is too big \n");
-                        free(node);
-			return;
-		    }
-                }
-
-            }
+			}
         }
+		//Schalten den besuchten Knoten frei, und nehmen den Naechsten
         free(node);
         node=dequeue(&MAINPQ);
     }
 }
 
-
+/**
+ * Die Hauptsuchfunktion stosst die beide Suchverfahren und die Listen den getroffenen Knoten an.
+ */
 int DFSGraph()
 {
+	//Der Startknote, den wir in die Prioritaetschalnge schieben
     NodeDay start={STARTID,0};
-    NodeDay* point;
     	
+	//Listen der getroffene und schon besuchte Knoten, bei der erste und zweite Suche.
     HITLIST=calloc((size_t)HUTLENGTH,sizeof(int));
     HITLIST2=calloc((size_t)HUTLENGTH,sizeof(int));
     DONELIST=calloc((size_t)HUTLENGTH,sizeof(int));
     DONELIST2=calloc((size_t)HUTLENGTH,sizeof(int));
 
+	//stossen die Schlange und fuegen den Startknoten hinzu
     initPQ(&MAINPQ);
     enqueue(&MAINPQ,start);
     
+	//Aufrufe die erste Suche
     oneRecursiv();
-    point=dequeue(&MAINPQ);
-       
-    while(point!=NULL)
-    {
-	free(point);
-      	point=dequeue(&MAINPQ);
-    }
-    
+	
+	//Freie die Liste. (lasse einfach die Schalnge neu ueberschrieben) 
+    MAINPQ.current=0;
+	
+	//fuege den Endknoten zu der Schlange hinzu
     start.dayleft=0;start.ID=ENDID;
     enqueue(&MAINPQ,start);
+	
+	//Aufrufe die zweite Suche, aus dem Endknoten zurueck
     backRecursiv();
     
+	//Schreibe die Huette, die in beiden Suchen getroffen sind
     for(int i=0;i<=MAXNODE;i++)
     { 
 	    if(isCheck(HITLIST,i) && isCheck(HITLIST2,i) )  {
-            	printf("%d\n",i);
+            	printf("%d",i);
+				if(i<MAXNODE)
+					printf("\n");
         }
     }
     
-    point=dequeue(&MAINPQ);
-    while(point!=NULL)
-    {
-	free(point);
-      	point=dequeue(&MAINPQ);
-    }
-    
-    free(MAINPQ.stack);
+    //freischalte alle Datenstrukturen, die in der Suche benuetzt sind
+    free(MAINPQ.queue);
     free(HITLIST);
     free(HITLIST2);
     free(DONELIST);
@@ -878,83 +928,97 @@ int DFSGraph()
 
 int main(int argc, char* argv[])
 {
-        unsigned int** values; // Die Zeile die wir lesen.
-        int initialsize; // Die upspruengliche Grosse 
-        int statusvalue; // Der zuruekgegebene Wert der Funktion
+	unsigned int** values; // Die Zeile die wir lesen.
+	int initialsize; // Die upspruengliche Grosse 
+	int statusvalue; // Der zuruekgegebene Wert der Initiationsfunktion
 
-	HUTLIST=NULL;GRAPHSTART=NULL;
+	//einfuehre die Globalenvariabeln
+	//Huetteliste
+	HUTLIST=NULL;
+	
+	//Zieger auf die Hauptstruktur des Graphens GraphBlock
+	GRAPHSTART=NULL;
 
 	//Lese die Datei
-        FILE* readfile= stdin;
+	FILE* readfile= stdin;
 
-        //Lese die erste Zeile
-       if(readfile==NULL)
-       {
-              printf("Invalid file \n");
-	       return 1;
-       }
-       	values=getValidLine(readfile);
+	//Lese die erste Zeile
+	values=getValidLine(readfile);
 
-        if(values[0]==NULL)
-        {
-            printf("Cannot read the first line in the file.\n");
-            return 1;
-        }
-
-        //Speichere die erste Zeile, Startknote Endeknote und DMAX
-        STARTID=*values[0];
-        ENDID=*values[1];
-        DMAX=*values[2];
-        
-	//Freischalte den Lesbuffer
-        free(values[0]);
-        free(values[1]);
-        free(values[2]);
-        free(values);
-
-        //Max KnoteID am anfang is entweder Start- oder End- Knote
-        initialsize=STARTID>ENDID?STARTID:ENDID;
-	MAXNODE=initialsize;
-        initialsize=1000>initialsize?1000:initialsize;
-
-	//Die erste Grosse der Graph ist zweimal den maximalen Knoten
-        GRAPHSIZE=(initialsize+1)*2;
-	
-        //Die Huetten sind in ein BIT muster gespeichert, jeder Bit ist ein Index. so es ist GRAPHSIZE/32(normalerweise)bit + 1
-        HUTLENGTH=(GRAPHSIZE/(sizeof(int)*8))+1;
-
-        //Wir reservieren so viel Platz wie oben fuer Huetteliste und Knotenliste
-        HUTLIST=calloc((size_t)HUTLENGTH,sizeof(int));
-        GRAPHSTART=calloc((size_t)GRAPHSIZE,sizeof(GraphBlock*));
-
-        if(HUTLIST==NULL || GRAPHSTART==NULL)
-        {
-            printf("Failed to allocate memory\n");
-            return 1;
-        }
-        //Wir lesen die Datei und speichern den grossesten KnotenID
-        statusvalue=initiateGraph(readfile);
-
-        if(statusvalue==1)
-        {
-            printf("Error initiating Graph. \n");
-	    printf("maxnode=%d graphsize=%d \n",MAXNODE,GRAPHSIZE);
-	    freeGraph();
-	    free(GRAPHSTART);
-	    free(HUTLIST);
-	    fclose(readfile);
-
-            return 1;
-        
+	//Es gibt eine Fehler bei dem Lesen
+	if(values==NULL)
+	{
+		printf("The file is empty.\n");
+		return 1;
 	}
-        
+	else
+		if(values[0]==NULL)
+		{
+			printf("Cannot read the first line in the file.\n");
+			free(values);
+			return 1;
+		}
+
+	//Speichere die erste Zeile, Startknote Endeknote und DMAX
+	STARTID=*values[0];
+	ENDID=*values[1];
+	DMAX=*values[2];
+	
+	//Freischalte den Lesbuffer
+	free(values[0]);
+	free(values[1]);
+	free(values[2]);
+	free(values);
+
+	//Max KnoteID am anfang is entweder Start- oder End- Knote
+	initialsize=STARTID>ENDID?STARTID:ENDID;
+	MAXNODE=initialsize;
+	
+	//Am Anfang am Mindestens 1000 Knoten Speicherplatz wird zugewiesen
+	initialsize=1000>initialsize?1000:initialsize;
+
+	//Die erste Grosse des Graphens ist zweimal den maximalen Knoten oder 1000 Knoten, je nachdem was groesser ist
+	GRAPHSIZE=(initialsize+1)*2;
+
+	//Die Huetten sind in ein BIT muster gespeichert, jeder Bit ist ein Index. so es ist GRAPHSIZE/32(normalerweise)bit + 1
+	HUTLENGTH=(GRAPHSIZE/(sizeof(int)*8))+1;
+
+	//Wir reservieren so viel Platz wie oben fuer Huetteliste und Knotenliste
+	HUTLIST=calloc((size_t)HUTLENGTH,sizeof(int));
+	GRAPHSTART=calloc((size_t)GRAPHSIZE,sizeof(GraphBlock*));
+
+	if(HUTLIST==NULL || GRAPHSTART==NULL)
+	{
+		printf("Failed to allocate memory\n");
+		return 1;
+	}
+	
+	//Wir lesen die Datei und speichern in die GraphBlock Struktur
+	statusvalue=initiateGraph(readfile);
+
+	if(statusvalue==1)
+	{
+		printf("Error initiating Graph. \n");
+		printf("maxnode=%d graphsize=%d \n",MAXNODE,GRAPHSIZE);
+		freeGraph();
+		free(GRAPHSTART);
+		free(HUTLIST);
+		fclose(readfile);
+
+		return 1;
+	
+	}
+    
+	//Anstelle den Suchalgorithmus
 	DFSGraph();
+	
 	freeGraph();
-        //befreie die Liste von Knoten
-        free(GRAPHSTART);
-        //befreie die Liste von Huetten
-        free(HUTLIST);
-        fclose(readfile);
-        return 0;
+    //befreie die Liste von Knoten
+    free(GRAPHSTART);
+    //befreie die Liste von Huetten
+    free(HUTLIST);
+    fclose(readfile);
+    
+	return 0;
 
 }
