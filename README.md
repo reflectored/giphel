@@ -24,6 +24,7 @@ Input:
 3 (The list of Inns)
 
 Output:
+
 3 
 
 
