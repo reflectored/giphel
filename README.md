@@ -6,10 +6,9 @@ The program recieves a graph of the available routes on the mountain, and return
 Example:
 
 Input:
+
 1 10 5 (The first line describes the starting point - 1, destination - 10, maximum distance oer day - 5)
-
 1 3 5  (Now comes the list of Edges, Node -1 to Node -3 and the cost -5)
-
 1 2 3
 
 2 1 1
