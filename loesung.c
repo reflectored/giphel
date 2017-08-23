@@ -41,10 +41,10 @@ int *HITLIST,*HITLIST2,*DONELIST,*DONELIST2; // Treffliste der Huetten und Knote
 //Ordnen Speicherplatz fuer die Prioritaetschlange zu
 int initPQ(PQ *inqueue)
 {
-    NodeDay* newstack=malloc(sizeof(NodeDay)*(MAXNODE+1));
-    if(inqueue==NULL || newstack==NULL)
+    NodeDay* newqueue=malloc(sizeof(NodeDay)*(MAXNODE+1));
+    if(inqueue==NULL || newqueue==NULL)
         return 1;
-    inqueue->queue=newstack;
+    inqueue->queue=newqueue;
     inqueue->length=MAXNODE+1;
     inqueue->current=0;
     return 0;
@@ -68,14 +68,14 @@ void siftUP(PQ *inqueue, int index)
 //Fuegen einen neuen Knoten zu dem Heap, und aktualieseren den
 int enqueue(PQ *inqueue, NodeDay node)
 {
-    NodeDay* newstack;
+    NodeDay* newqueue;
     if(inqueue->current==inqueue->length)
     {
-        newstack=realloc(inqueue->queue,(size_t)inqueue->length*2);
-        if(newstack==NULL)
+        newqueue=realloc(inqueue->queue,(size_t)inqueue->length*2);
+        if(newqueue==NULL)
             return 1;
         inqueue->length*=2;
-        inqueue->queue=newstack;
+        inqueue->queue=newqueue;
     }
     inqueue->queue[inqueue->current]=node;
     siftUP(inqueue,inqueue->current);
@@ -178,24 +178,35 @@ unsigned int** getValidLine(FILE* fp)
 {
     char c,lastdigit=0; //Eingabe Char
     unsigned int count=0;
-    unsigned int *num=malloc(sizeof(unsigned int)); //Indicie des Chars, und unsigned int den wir anehmen von der Datei
-    unsigned int **list=malloc(3* sizeof(unsigned int*)); // Bekommen wir hier 3 oder 1 wert zurueck;
+    unsigned int *num=NULL; //Indicie des Chars, und unsigned int den wir anehmen von der Datei
+    unsigned int **list=NULL; // Bekommen wir hier 3 oder 1 wert zurueck;
     //Lesen ein Char
-    c=(char)fgetc(fp);
-    list[0]=NULL;list[1]=NULL;list[2]=NULL;
-    *num=0;
-
-    //Wenn Pointer zeigt auf keine Datei
+       //Wenn Pointer zeigt auf keine Datei
     if(fp==NULL) {
-        printf("The File is invalid");
+        printf("The File is invalid.\n");
         goto ERROR;
     }
 
+    num=malloc(sizeof(unsigned int));
+    list=malloc(3* sizeof(unsigned int*)); 
+    
+    if(num== NULL|| list== NULL)
+    {
+        printf("Failed to allocate memory.\n");
+        goto ERROR;
+    }
+
+
+    list[0]=NULL;list[1]=NULL;list[2]=NULL;
+    *num=0;
+   
     //Wir lesen bis:
     // wir zum Ende der Datei sind
     // die Zahl ist zu gross
     // eine neue Linie kommt
     // ein Space ist betroffen
+	
+    c=(char)fgetc(fp);
 
     while(c!=EOF && count<10 && c!='\n' && c!=' ' ) {
         if (c > '9' || c < '0') {
@@ -217,9 +228,9 @@ unsigned int** getValidLine(FILE* fp)
 	
 	//Das Ende der Datei
     if(count==0 && c==EOF) {
-        free(list);
-        free(num);
-        return NULL;
+        *num=EOF;
+        list[0] = num;
+        return list;
     }
 
     if( count==0 || count==10 )
@@ -237,6 +248,11 @@ unsigned int** getValidLine(FILE* fp)
 
     count=0;
     num=malloc(sizeof(*num));
+    if(num==NULL)
+    {
+        printf("Failed to allocate memory.\n");
+        goto ERROR;
+    }
     *num=0;
     c=(char)fgetc(fp);
 
@@ -270,11 +286,16 @@ unsigned int** getValidLine(FILE* fp)
 
     count=0;
     num=malloc(sizeof(*num));
+    if(num==NULL)
+    {
+        printf("Failed to allocate memory.\n");
+        goto ERROR;
+    }
     *num=0;
 
     c=(char)fgetc(fp);
     //Jetzt wir die dritte Zahl einlesen
-    while(c!=EOF && count<10 && c!='\n')
+    while(c!=EOF && count<10 && c!='\n' && c!='\r')
     {
 	if(c==' ')
 	{
@@ -302,8 +323,21 @@ unsigned int** getValidLine(FILE* fp)
         count++;
         c=(char)fgetc(fp);
     }
-
-    if(count==0 || count==11 ) {
+    if(c=='\r')
+    {
+        c=(char)fgetc(fp);
+        if(c!='\n')
+        {
+            printf("Invalid character after \\r \n");
+            goto ERROR;
+        }
+    }
+    if(count==0)
+    {
+        printf("Invalid format: 2 values were given. \n");
+        goto ERROR;
+    }
+    if( count==11 ) {
         printf("No3: Value is too Big. \n");
         goto ERROR;
     }
@@ -312,11 +346,16 @@ unsigned int** getValidLine(FILE* fp)
     return list;
 
     ERROR:
+    if(list!=NULL)
+    {
         free(list[0]);
-	free(list[1]);
-	free(list[2]);
-	free(num);
+        free(list[1]);
+        free(list[2]);
         list[0]=NULL;
+    }
+
+	free(num);
+
 	return list;
 }
 
@@ -593,7 +632,7 @@ int initiateGraph(FILE* fp)
     int* newhutlist;
     int isValid;// Wert von addNode funktion
     int newlength,isNodesdone=0;
-    int linesread=0;
+    int linesread=1;
     int errorFlag=0;
 
     if(GRAPHSTART==NULL || HUTLIST==NULL) {
@@ -604,20 +643,48 @@ int initiateGraph(FILE* fp)
     //liest eine Zeile von der Datei
     values = getValidLine(fp);
     if(values!=NULL && values[0]==NULL)
-    {	    errorFlag=1;
-	    free(values);
+    {
+        errorFlag=1;
+        free(values);
     }
     else
     	linesread++;
 
-    while(values!=NULL && errorFlag!=1)
+    while(values!=NULL && errorFlag==0)
     {    
 		if(values[0]==NULL)
 		{
+		
 			errorFlag=1;
 			free(values);
 			continue;
-		}	
+		}
+        if(*values[0]==EOF && values[1]==NULL && values[2]==NULL)
+        {
+            errorFlag=2;
+	    
+	   //Falls wir zum Ende gekommen sind, und es keine Hutten gibt 
+	       newlength=(GRAPHSIZE/(sizeof(int)*8)+1);
+                if(newlength>HUTLENGTH)
+                {
+                    newhutlist=calloc(newlength,sizeof(int));
+                    if(newhutlist==NULL)
+                    {
+                        printf("Failed to enlarge HUTLIST (addNode)\n");
+						errorFlag=1;
+						free(values[0]);
+						free(values);
+						continue;
+                    }
+		    free(HUTLIST);
+                    HUTLIST=newhutlist;
+		    HUTLENGTH=newlength;
+		}
+	    
+	    free(values[0]);
+            free(values);
+            continue;
+        }
 	   
         //wenn Es eine Zeile mit Huette Nummer
         if(values[1]==NULL)
@@ -636,10 +703,9 @@ int initiateGraph(FILE* fp)
 						free(values);
 						continue;
                     }
-		    
-					free(HUTLIST);
+		    free(HUTLIST);
                     HUTLIST=newhutlist;
-					HUTLENGTH=newlength;
+		    HUTLENGTH=newlength;
 		 
                 }
                 isNodesdone=1;
@@ -654,9 +720,9 @@ int initiateGraph(FILE* fp)
                 {
                     printf("Failed to enlarge HUTLIST (addNode)\n");
                     errorFlag=1;
-					free(values[0]);
+		    free(values[0]);
             	    free(values);
-					continue;
+		    continue;
                 }
 				
 				for(int i=0;i<HUTLENGTH;i++)
@@ -687,7 +753,7 @@ int initiateGraph(FILE* fp)
 
             //Wenn die Listen zu klein sind, vergroessere ich die Listen
             if(getvalue>=GRAPHSIZE) {
-                if(enlargeLists()==-1)
+                if(enlargeLists()==1)
 				{
 				 printf("Error while enlarging Nodeslist. \n");
 				 errorFlag=1;
@@ -728,8 +794,8 @@ int initiateGraph(FILE* fp)
 		linesread++;
     }
 
-	if(errorFlag)
-	goto ERROR;
+	if(errorFlag<2)
+	    goto ERROR;
     return 0;
 
 ERROR:
@@ -741,7 +807,7 @@ ERROR:
  * Die Funktion fuehrt DFS suche mit eine Prioritaetschlange. Wir suechen nach erreichbare Huette aus dem Startknoten.
  * Alle gefuendene Knoten sind in HITLIST markiert
  */
-void oneRecursiv()
+int oneRecursiv()
 {
 	//entnehme den Erstenknoten in der Schlange
     NodeDay* node=dequeue(&MAINPQ);
@@ -796,7 +862,7 @@ void oneRecursiv()
                     {
                         printf("Priority Queue is too big \n");
                         free(node);
-						return;
+						return 1;
 					}
                 }
 
@@ -807,13 +873,14 @@ void oneRecursiv()
         free(node);
         node=dequeue(&MAINPQ);
     }
+    return 0;
 }
 
 /**
  * Die Funktion fuehrt DFS suche mit eine Prioritaetschlange. Wir suechen nach erreichbare Huette aus dem EndKnoten.
  * Alle gefuendene Knoten sind in HITLIST2 markiert
  */
-void backRecursiv()
+int backRecursiv()
 {
 	//entnehme den Erstenknoten in der Schlange
     NodeDay* node=dequeue(&MAINPQ);
@@ -863,7 +930,7 @@ void backRecursiv()
 					{
 						printf("Priority Queue is too big \n");
 						free(node);
-						return;
+						return 1;
 					}
 				}
 
@@ -873,6 +940,7 @@ void backRecursiv()
         free(node);
         node=dequeue(&MAINPQ);
     }
+    return 0;
 }
 
 /**
@@ -880,8 +948,10 @@ void backRecursiv()
  */
 int DFSGraph()
 {
+	int status=0;
 	//Der Startknote, den wir in die Prioritaetschalnge schieben
     NodeDay start={STARTID,0};
+    MAINPQ.queue=NULL;
     	
 	//Listen der getroffene und schon besuchte Knoten, bei der erste und zweite Suche.
     HITLIST=calloc((size_t)HUTLENGTH,sizeof(int));
@@ -889,12 +959,29 @@ int DFSGraph()
     DONELIST=calloc((size_t)HUTLENGTH,sizeof(int));
     DONELIST2=calloc((size_t)HUTLENGTH,sizeof(int));
 
+    if(HITLIST==NULL || HITLIST2 == NULL || DONELIST==NULL || DONELIST2==NULL)
+    {
+	    status=1;
+	    goto END;
+    }
 	//stossen die Schlange und fuegen den Startknoten hinzu
-    initPQ(&MAINPQ);
-    enqueue(&MAINPQ,start);
+    if(initPQ(&MAINPQ))
+    {
+	    status=1;
+	    goto END;
+    }
+    if(enqueue(&MAINPQ,start))
+    {
+	    status=1;
+	    goto END;
+    }
     
 	//Aufrufe die erste Suche
-    oneRecursiv();
+    if(oneRecursiv())
+    {
+	    status=1;
+	    goto END;
+    }
 	
 	//Freie die Liste. (lasse einfach die Schalnge neu ueberschrieben) 
     MAINPQ.current=0;
@@ -904,7 +991,11 @@ int DFSGraph()
     enqueue(&MAINPQ,start);
 	
 	//Aufrufe die zweite Suche, aus dem Endknoten zurueck
-    backRecursiv();
+    if(backRecursiv())
+    {
+	    status=1;
+	    goto END;
+    }
     
 	//Schreibe die Huette, die in beiden Suchen getroffen sind
     for(int i=0;i<=MAXNODE;i++)
@@ -917,13 +1008,15 @@ int DFSGraph()
     }
     
     //freischalte alle Datenstrukturen, die in der Suche benuetzt sind
+END:
     free(MAINPQ.queue);
     free(HITLIST);
     free(HITLIST2);
     free(DONELIST);
     free(DONELIST2);
-
-    return 0;
+    if(status) 
+    	printf("Could not allocate more memory.\n");
+    return status;
 }
 
 int main(int argc, char* argv[])
@@ -941,20 +1034,27 @@ int main(int argc, char* argv[])
 
 	//Lese die Datei
 	FILE* readfile= stdin;
-
+    //readfile=fopen("graph4edit.txt", "r");
 	//Lese die erste Zeile
 	values=getValidLine(readfile);
 
 	//Es gibt eine Fehler bei dem Lesen
 	if(values==NULL)
 	{
-		printf("The file is empty.\n");
+		printf("Cannot read the file.\n");
 		return 1;
 	}
-	else
-		if(values[0]==NULL)
-		{
-			printf("Cannot read the first line in the file.\n");
+	
+	if(values[0]==NULL)
+	{
+		printf("Cannot read the first line in the file.\n");
+		free(values);
+		return 1;
+	}
+	if(*values[0]==EOF && values[1]==NULL && values[2]==NULL)	
+	{
+			printf("The file is empty.\n");
+			free(values[0]);
 			free(values);
 			return 1;
 		}
@@ -1008,9 +1108,9 @@ int main(int argc, char* argv[])
 		return 1;
 	
 	}
-    
 	//Anstelle den Suchalgorithmus
 	DFSGraph();
+	
 	
 	freeGraph();
     //befreie die Liste von Knoten
