@@ -3,7 +3,6 @@
 #include <memory.h>
 
 
-
 typedef struct{
     int toID;
     unsigned int cost;
@@ -176,7 +175,8 @@ int isCheck(int* array,int indicie)
 //Output: Ein Array mit den Werten der Knoten, und Uberganggebuehr
 unsigned int** getValidLine(FILE* fp)
 {
-    char c,lastdigit=0; //Eingabe Char
+    char lastdigit=0; //Eingabe Char
+	int c;
     unsigned int count=0;
     unsigned int *num=NULL; //Indicie des Chars, und unsigned int den wir anehmen von der Datei
     unsigned int **list=NULL; // Bekommen wir hier 3 oder 1 wert zurueck;
@@ -220,8 +220,8 @@ unsigned int** getValidLine(FILE* fp)
             printf("No1: Value is too big. \n");
             goto ERROR;
         }
-        if(count==0)
-            count++;
+        
+         count++;
 
         c=(char)fgetc(fp);
     }
@@ -242,9 +242,23 @@ unsigned int** getValidLine(FILE* fp)
     list[0] = num;
 
     //Nur eine Zahl ist gelesen, dh eine Zeile wo nur ein Knoten vorkommt.
-    if(c=='\n'  || c==EOF) {
+    if(c=='\n' ) {
         return list;
     }
+	//Falls der letzte Hutte mit EOF beendet ist
+	if(c==EOF)
+	{
+		//printf("EOF\n");
+		num=malloc(sizeof(unsigned int));
+		if(num== NULL)
+		{
+			printf("Failed to allocate memory.\n");
+			goto ERROR;
+		}
+		*num=EOF;
+		list[1]=num;
+		return list;
+	}
 
     count=0;
     num=malloc(sizeof(*num));
@@ -272,8 +286,7 @@ unsigned int** getValidLine(FILE* fp)
             goto ERROR;
         }
 
-        if(count==0)
-            count++;
+        count++;
         c=(char)fgetc(fp);
     }
 
@@ -676,19 +689,23 @@ int initiateGraph(FILE* fp)
 						free(values);
 						continue;
                     }
-		    free(HUTLIST);
-                    HUTLIST=newhutlist;
-		    HUTLENGTH=newlength;
+				free(HUTLIST);
+                HUTLIST=newhutlist;
+				HUTLENGTH=newlength;
 		}
 	    
-	    free(values[0]);
+			free(values[0]);
             free(values);
             continue;
         }
 	   
         //wenn Es eine Zeile mit Huette Nummer
-        if(values[1]==NULL)
+        if(values[1]==NULL || *values[1]==EOF)
         {
+			//Wenn die letzte Huette mit EOF beendet ist
+			if(values[1]!=NULL && *values[1]==EOF)
+				errorFlag=2;
+			
             if(isNodesdone==0)
             {
                 newlength=(GRAPHSIZE/(sizeof(int)*8)+1);
@@ -703,9 +720,9 @@ int initiateGraph(FILE* fp)
 						free(values);
 						continue;
                     }
-		    free(HUTLIST);
+					free(HUTLIST);
                     HUTLIST=newhutlist;
-		    HUTLENGTH=newlength;
+					HUTLENGTH=newlength;
 		 
                 }
                 isNodesdone=1;
@@ -720,7 +737,7 @@ int initiateGraph(FILE* fp)
                 {
                     printf("Failed to enlarge HUTLIST (addNode)\n");
                     errorFlag=1;
-		    free(values[0]);
+					free(values[0]);
             	    free(values);
 		    continue;
                 }
@@ -790,8 +807,12 @@ int initiateGraph(FILE* fp)
 				continue;
 			}
         }
-        values = getValidLine(fp);
-		linesread++;
+		if(errorFlag==0)
+		{
+			values = getValidLine(fp);
+			linesread++;
+		}
+        
     }
 
 	if(errorFlag<2)
