@@ -704,7 +704,10 @@ int initiateGraph(FILE* fp)
         {
 			//Wenn die letzte Huette mit EOF beendet ist
 			if(values[1]!=NULL && *values[1]==EOF)
+			{
 				errorFlag=2;
+				free(values[1]);
+			}
 			
             if(isNodesdone==0)
             {
